@@ -1,55 +1,45 @@
-import { config } from "dotenv";
-import { ThirdwebSDK } from "@thirdweb-dev/sdk";
+import 'dotenv/config'
 import { readFileSync } from "fs";
+import { ThirdwebSDK } from "@thirdweb-dev/sdk";
+import { createRequire } from "module";
+import { get } from 'http';
+const require = createRequire(import.meta.url);
+const fs = require('fs');
+const process = require('process');
 
-config();
 
-const main = async () => {
-  if (!process.env.WALLET_PRIVATE_KEY) {
-    throw new Error("No private key found");
-  }
-
-  try {
-    const sdk = ThirdwebSDK.fromPrivateKey(
-      process.env.WALLET_PRIVATE_KEY,
-      "mumbai",
-      {
-        secretKey: process.env.THIRDWEB_SECRET_KEY,
-      }
+async function fetchMetada() {
+    const response = await fetch(
+        process.env.SFDC_ENDPOINT,
+        {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Authorization: Bearer ' + process.env.SFDC_TOKEN,
+                "Content-Type": "application/json",
+            }
+        }
     );
+    const data = await response.json();
+    return data;
+}
 
-    const contractAddress = await sdk.deployer.deployNFTDrop({
-      name: "My Drop",
-      primary_sale_recipient: "0x39Ab29fAfb5ad19e96CFB1E1c492083492DB89d4",
-    });
+const metadata = await fetchMetada();
 
-    console.log("Contract address: ", contractAddress);
+// If used on the BACKEND pass your 'secretKey'
+const sdk = ThirdwebSDK.fromPrivateKey(process.env.PRIVATE_KEY, "base-goerli", {
+    secretKey: process.env.SECRET_KEY,
+});
+const contract = await sdk.getContract(process.env.CONTRACT_ADDRESS);
 
-    const contract = await sdk.getContract(contractAddress, "nft-drop");
-
-    const metadatas = [
-      {
-        name: "Blue Star",
-        description: "A blue star NFT",
-        image: readFileSync("assets/blue-star.png"),
-      },
-      {
-        name: "Red Star",
-        description: "A red star NFT",
-        image: readFileSync("assets/red-star.png"),
-      },
-      {
-        name: "Yellow Star",
-        description: "A yellow star NFT",
-        image: readFileSync("assets/yellow-star.png"),
-      },
-    ];
-
-    await contract.createBatch(metadatas);
-    console.log("Created batch successfully!");
-  } catch (e) {
-    console.error("Something went wrong: ", e);
-  }
-};
-
-main();
+const nftsToMint = [];
+metadata.forEach((coinaversary) => {
+    let nftTitle = 'Happy ' + coinaversary.Coinaversary_In_Years__c +
+        ' Year Coinaversary ' + coinaversary.First_Name__c + '!';
+    let nftToMint = {
+        name: nftTitle,
+        // ... Any other metadata you want to include
+    }
+    nftsToMint.push(nftToMint);
+});
+console.log(nftsToMint);
+//const mintedNFTs = await contract.erc721.mintBatchTo(process.env.WALLET_ADDRESS, metadatas);
